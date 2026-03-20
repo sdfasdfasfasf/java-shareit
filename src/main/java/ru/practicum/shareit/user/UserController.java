@@ -2,12 +2,15 @@ package ru.practicum.shareit.user;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.user.dto.UserDto;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping(path = "/users")
 @RequiredArgsConstructor
@@ -15,29 +18,37 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserDto create(@Valid @RequestBody UserDto userDto) {
-        return userService.create(userDto);
+    public ResponseEntity<UserDto> create(@Valid @RequestBody UserDto userDto) {
+        log.info("POST /users - создание пользователя");
+        UserDto created = userService.create(userDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PatchMapping("/{userId}")
-    public UserDto update(@PathVariable Long userId, @RequestBody UserDto userDto) {
-        return userService.update(userId, userDto);
+    public ResponseEntity<UserDto> update(@PathVariable Long userId, @RequestBody UserDto userDto) {
+        log.info("PATCH /users/{} - обновление пользователя", userId);
+        UserDto updated = userService.update(userId, userDto);
+        return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/{userId}")
-    public UserDto getById(@PathVariable Long userId) {
-        return userService.getById(userId);
+    public ResponseEntity<UserDto> getById(@PathVariable Long userId) {
+        log.info("GET /users/{} - получение пользователя", userId);
+        UserDto user = userService.getById(userId);
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping
-    public List<UserDto> getAll() {
-        return userService.getAll();
+    public ResponseEntity<List<UserDto>> getAll() {
+        log.info("GET /users - получение всех пользователей");
+        List<UserDto> users = userService.getAll();
+        return ResponseEntity.ok(users);
     }
 
     @DeleteMapping("/{userId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long userId) {
+    public ResponseEntity<Void> delete(@PathVariable Long userId) {
+        log.info("DELETE /users/{} - удаление пользователя", userId);
         userService.delete(userId);
+        return ResponseEntity.noContent().build();
     }
 }

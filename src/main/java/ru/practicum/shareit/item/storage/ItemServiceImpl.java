@@ -1,6 +1,7 @@
 package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.dto.ItemDto;
@@ -12,6 +13,7 @@ import ru.practicum.shareit.user.storage.UserStorage;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
@@ -20,32 +22,41 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto create(Long userId, ItemDto itemDto) {
-        // проверяем существование пользователя
+        log.info("Создание вещи для пользователя с id {}: {}", userId, itemDto);
         User owner = userStorage.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
+                .orElseThrow(() -> {
+                    log.error("Пользователь с id {} не найден", userId);
+                    return new NotFoundException("Пользователь с id " + userId + " не найден");
+                });
 
         Item item = ItemMapper.toItem(itemDto);
         item.setOwner(owner);
 
         Item created = itemStorage.create(item);
+        log.debug("Создана вещь: {}", created);
         return ItemMapper.toItemDto(created);
     }
 
     @Override
     public ItemDto update(Long userId, Long itemId, ItemDto itemDto) {
-        // проверяем существование пользователя
+        log.info("Обновление вещи с id {} от пользователя с id {}: {}", itemId, userId, itemDto);
         User owner = userStorage.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
+                .orElseThrow(() -> {
+                    log.error("Пользователь с id {} не найден", userId);
+                    return new NotFoundException("Пользователь с id " + userId + " не найден");
+                });
 
         Item existing = itemStorage.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
+                .orElseThrow(() -> {
+                    log.error("Вещь с id {} не найдена", itemId);
+                    return new NotFoundException("Вещь с id " + itemId + " не найдена");
+                });
 
-        // проверяем, что пользователь является владельцем
         if (!existing.getOwner().getId().equals(owner.getId())) {
-            throw new NotFoundException("Пользователь не является владельцем вещи"); // можно использовать Forbidden
+            log.warn("Пользователь с id {} пытается изменить вещь другого владельца", userId);
+            throw new NotFoundException("Пользователь не является владельцем вещи");
         }
 
-        // обновляем только переданные поля
         if (itemDto.getName() != null) {
             existing.setName(itemDto.getName());
         }
@@ -57,22 +68,29 @@ public class ItemServiceImpl implements ItemService {
         }
 
         Item updated = itemStorage.update(existing);
+        log.debug("Обновлена вещь: {}", updated);
         return ItemMapper.toItemDto(updated);
     }
 
     @Override
     public ItemDto getById(Long itemId) {
+        log.info("Получение вещи с id {}", itemId);
         Item item = itemStorage.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
+                .orElseThrow(() -> {
+                    log.error("Вещь с id {} не найдена", itemId);
+                    return new NotFoundException("Вещь с id " + itemId + " не найдена");
+                });
         return ItemMapper.toItemDto(item);
     }
 
     @Override
     public List<ItemDto> getAllByOwner(Long userId) {
-        // проверяем существование пользователя (необязательно, но для целостности)
+        log.info("Получение всех вещей владельца с id {}", userId);
         userStorage.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
-
+                .orElseThrow(() -> {
+                    log.error("Пользователь с id {} не найден", userId);
+                    return new NotFoundException("Пользователь с id " + userId + " не найден");
+                });
         return itemStorage.findAllByOwner(userId).stream()
                 .map(ItemMapper::toItemDto)
                 .collect(Collectors.toList());
@@ -80,6 +98,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemDto> search(String text) {
+        log.info("Поиск вещей по тексту: {}", text);
         return itemStorage.searchAvailable(text).stream()
                 .map(ItemMapper::toItemDto)
                 .collect(Collectors.toList());
